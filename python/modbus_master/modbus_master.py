@@ -1,12 +1,21 @@
 import sys
-import os
 import serial
 from time import sleep
+import importlib.util
+import os
 
-# Add project root to Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Path to CRC16.py
+current_dir = os.path.dirname(__file__)
+crc_path = os.path.join(current_dir, '..', 'MODBUS-CRC16', 'CRC16.py')
+crc_path = os.path.abspath(crc_path)
 
-from MODBUS_CRC16.CRC16 import MODBUS_CRC16_v1
+# Load module dynamically
+spec = importlib.util.spec_from_file_location("CRC16", crc_path)
+crc_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(crc_module)
+
+# Now access the function
+MODBUS_CRC16_v1 = crc_module.MODBUS_CRC16_v1
 
 def read_holding_regsiters_payload(start_addr: int, num_regs: int):
 	ret = bytearray(5)
