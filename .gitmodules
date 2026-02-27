@@ -1,3 +1,0 @@
-[submodule "python/MODBUS-CRC"]
-	path = python/MODBUS-CRC
-	url = git@github.com:Ricardgs/modbus_commands.git
