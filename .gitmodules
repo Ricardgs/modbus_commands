@@ -1,3 +1,3 @@
-[submodule "python/MODBUS_CRC16"]
-	path = python/MODBUS_CRC16
-	url = git@github.com:LacobusVentura/MODBUS-CRC16.git
+[submodule "python/MODBUS-CRC"]
+	path = python/MODBUS-CRC
+	url = git@github.com:Ricardgs/modbus_commands.git
