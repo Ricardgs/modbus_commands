@@ -1,0 +1,3 @@
+[submodule "python/MODBUS-CRC16"]
+	path = python/MODBUS-CRC16
+	url = https://github.com/raphaelnunes67/MODBUS-CRC16.git
