@@ -20,6 +20,7 @@
 
 #include "config/config.h"
 #include "hal_os/hal_os.h"
+#include "hal_clk/hal_clk.h"
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
@@ -27,6 +28,8 @@
 
 int main(void)
 {
+	(void)hal_clk_set_freq_hz(HAL_CLK_TARGET_FREQ_HZ);
+
 	hal_os_init();
 
 	hal_os_start();

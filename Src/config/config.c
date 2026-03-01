@@ -53,7 +53,7 @@ const hal_uart_config_s config_uart[HAL_UART_UART_MAX] =
 		{
 				.uart_num = HAL_UART_USART_2,
 				.baudrate = 19200,
-				.clk_freq_hz = HAL_CLK_DEFAULT_FREQ_HZ,
+				.clk_freq_hz = HAL_CLK_TARGET_FREQ_HZ,
 				.parity = HAL_UART_PARITY_EVEN,
 				.n_stop_bits = HAL_UART_STOP_BITS_1,
 				.n_bits = HAL_UART_N_BITS_8
@@ -64,7 +64,7 @@ const hal_timer_config_s config_timer[] =
 {
 		{
 				.timer_inst = HAL_TIMER_TIMER_INST_6,
-				.clk_freq_hz = HAL_CLK_DEFAULT_FREQ_HZ,
+				.clk_freq_hz = HAL_CLK_TARGET_FREQ_HZ,
 				.tick_freq_hz = 1000
 		}
 };

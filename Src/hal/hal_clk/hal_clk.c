@@ -58,19 +58,6 @@ error_e hal_clk_set_freq_hz(uint32_t freq_hz)
 
 	else
 	{
-		/* In order to modify the PLL configuration, it is required to first
-		 * shut it down */
-
-		/* Select MSI as the clock source for SYSCLK */
-		RCC->CFGR &= ~(RCC_CFGR_SW_Msk);
-
-		/* Disable PLL */
-		RCC->CR &= ~(RCC_CR_PLLON_Msk);
-
-		/* Wait until PLLRDY flag is cleared */
-		while(RCC->CR & RCC_CR_PLLRDY_Msk);
-
-		/* PLL is now disabled. Proceed to change its configuration */
 		freq_factor = (float)freq_hz/(float)HAL_CLK_MSI_FREQ_HZ;
 
 		for(pllr_index = 0;
@@ -102,6 +89,25 @@ error_e hal_clk_set_freq_hz(uint32_t freq_hz)
 				{
 					/* A feasible set of values have been found! Update PLL
 					 * configuration */
+
+					/* In order to modify the PLL configuration, it is required to first
+					 * shut it down */
+
+					/* Select MSI as the clock source for SYSCLK */
+					RCC->CFGR &= ~(RCC_CFGR_SW_Msk);
+
+					/* Disable PLL */
+					RCC->CR &= ~(RCC_CR_PLLON_Msk);
+
+					/* Wait until PLLRDY flag is cleared */
+					while(RCC->CR & RCC_CR_PLLRDY_Msk);
+
+					/* Select MSI clock as the source for PLL */
+					RCC->PLLCFGR &= ~RCC_PLLCFGR_PLLSRC_Msk;
+					RCC->PLLCFGR |= RCC_PLLCFGR_PLLSRC_MSI;
+
+					/* PLL is now disabled. Proceed to change its configuration */
+
 					RCC->PLLCFGR &= ~(RCC_PLLCFGR_PLLR_Msk);
 					RCC->PLLCFGR |= (((uint32_t)pllr_index) << RCC_PLLCFGR_PLLR_Pos)
 									& RCC_PLLCFGR_PLLR_Msk;
@@ -114,14 +120,17 @@ error_e hal_clk_set_freq_hz(uint32_t freq_hz)
 					RCC->PLLCFGR |= (((uint32_t)plln) << RCC_PLLCFGR_PLLN_Pos)
 									& RCC_PLLCFGR_PLLN_Msk;
 
+					/* Enable R output of main PLL */
+					RCC->PLLCFGR |= RCC_PLLCFGR_PLLREN;
+
 					/* The PLL is now configured. Re-enable it */
 					RCC->CR |= RCC_CR_PLLON_Msk;
 
+					/* Wait until PLLRDY flag is set */
+					while((RCC->CR & RCC_CR_PLLRDY_Msk) == 0);
+
 					/* Enable the R output */
 					RCC->CR |= RCC_PLLCFGR_PLLREN_Msk;
-
-					/* Wait until PLLRDY flag is set */
-					while(~(RCC->CR & RCC_CR_PLLRDY_Msk));
 
 					/* Select PLL as the clock source for SYSCLK */
 					RCC->CFGR &= ~(RCC_CFGR_SW_Msk);

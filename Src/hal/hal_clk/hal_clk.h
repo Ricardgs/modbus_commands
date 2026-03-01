@@ -13,6 +13,7 @@
 #include <error.h>
 
 #define HAL_CLK_MSI_FREQ_HZ			4000000
+#define HAL_CLK_TARGET_FREQ_HZ		80000000
 #define HAL_CLK_DEFAULT_FREQ_HZ		HAL_CLK_MSI_FREQ_HZ
 
 void hal_clk_init(void);
