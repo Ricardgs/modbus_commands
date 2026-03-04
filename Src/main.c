@@ -28,6 +28,10 @@
 
 int main(void)
 {
+	hal_clk_init();
+
+	hal_clk_start();
+
 	(void)hal_clk_set_freq_hz(HAL_CLK_TARGET_FREQ_HZ);
 
 	hal_os_init();
