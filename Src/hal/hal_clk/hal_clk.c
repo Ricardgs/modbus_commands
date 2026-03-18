@@ -10,9 +10,6 @@
 #include <stm32l476xx.h>
 #include <core_cm4.h>
 
-#define HAL_CLK_MIN_FREQ_HZ								8000000
-#define HAL_CLK_MAX_FREQ_HZ								80000000
-
 /* Range of possible VCO input frequencies */
 #define HAL_CLK_VCO_IN_MAX_FREQ_HZ						16000000
 #define HAL_CLK_VCO_IN_MIN_FREQ_HZ						4000000
@@ -100,7 +97,7 @@ error_e hal_clk_set_freq_hz(uint32_t freq_hz)
 					&& vco_output_freq >= HAL_CLK_VCO_OUT_MIN_FREQ_HZ
 					&& vco_output_freq <= HAL_CLK_VCO_OUT_MAX_FREQ_HZ)
 				{
-					/* A feasible set of values have been found! Before updating
+					/* A feasible set of values has been found! Before updating
 					 * PLL configuration, first select MSI as the clock source
 					 * */
 
@@ -260,7 +257,7 @@ error_e hal_clk_set_freq_hz(uint32_t freq_hz)
 	}
 }
 
-uint16_t hal_clk_get_freq_hz(void)
+uint32_t hal_clk_get_freq_hz(void)
 {
 	return vhal_clk_freq_hz;
 }

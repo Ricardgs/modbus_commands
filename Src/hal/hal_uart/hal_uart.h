@@ -9,6 +9,7 @@
 #define HAL_HAL_UART_HAL_UART_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <error.h>
 
 typedef enum
@@ -16,13 +17,6 @@ typedef enum
 	HAL_UART_USART_2,
 	HAL_UART_UART_MAX
 } hal_uart_uart_num_e;
-
-typedef enum
-{
-	HAL_UART_CIRC_BUFF_DIR_RX,
-	HAL_UART_CIRC_BUFF_DIR_TX,
-	HAL_UART_CIRC_BUFF_DIR_MAX
-} hal_uart_circ_buff_dir_e;
 
 typedef enum
 {
@@ -69,5 +63,9 @@ error_e hal_uart_retrieve(hal_uart_uart_num_e uart_num,
 						  uint8_t *buf,
 						  uint8_t len);
 void hal_uart_flush_buffer(hal_uart_uart_num_e uart_num);
+error_e hal_uart_disable(hal_uart_uart_num_e uart_num);
+void hal_uart_enable(hal_uart_uart_num_e uart_num);
+bool hal_uart_is_disabled(hal_uart_uart_num_e uart_num);
+void hal_uart_update_clk_freq(uint32_t clk_freq_hz);
 
 #endif /* HAL_HAL_UART_HAL_UART_H_ */

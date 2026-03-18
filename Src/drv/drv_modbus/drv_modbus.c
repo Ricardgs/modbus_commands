@@ -665,7 +665,7 @@ void drv_modbus_fxn(void)
 					for(j = reg_index; j < reg_index + n_words; j++)
 					{
 						vdrv_modbus_regs[i].holding_regs_val[j]
-							 = (uint16_t)drv_modbus_frame_buffer[i][7 + ((j - reg_index) << 1)]
+							 = ((uint16_t)drv_modbus_frame_buffer[i][7 + ((j - reg_index) << 1)]) << 8
 								|  drv_modbus_frame_buffer[i][7 + ((j - reg_index) << 1) + 1];
 					}
 

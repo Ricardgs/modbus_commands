@@ -7,6 +7,7 @@
 
 #include "hal_timer.h"
 #include <string.h>
+#include <stdbool.h>
 #include <stm32l476xx.h>
 #include <core_cm4.h>
 
@@ -16,6 +17,7 @@ static void hal_timer_calc_prescaler_counts(uint32_t clk_freq_hz,
 											uint32_t *prescaler,
 											uint32_t *auto_reload);
 static void hal_timer_enable_clk(hal_timer_timer_inst_e timer_inst);
+static bool hal_timer_is_clk_enabled(hal_timer_timer_inst_e timer_inst);
 static inline void hal_timer_interrupt_handler(hal_timer_timer_inst_e timer_inst);
 
 static uint32_t vhal_timer_ticks[HAL_TIMER_TIMER_INST_MAX];
@@ -156,6 +158,40 @@ void hal_timer_update_freq(uint32_t clk_freq_hz)
 
 }
 
+void hal_timer_stop_all(void)
+{
+	/* We might cause a hard fault if we try to read or write a register without
+	 * the peripheral being clocked */
+
+	for(hal_timer_timer_inst_e tim = 0; tim < HAL_TIMER_TIMER_INST_MAX; tim++)
+	{
+		if(hal_timer_is_clk_enabled(tim) == true)
+		{
+			/* Disable counter */
+			vhal_timer_base[tim]->CR1 &= ~TIM_CR1_CEN;
+		}
+	}
+}
+
+void hal_timer_resume_all(void)
+{
+	/* We might cause a hard fault if we try to read or write a register without
+	 * the peripheral being clocked */
+
+	for(hal_timer_timer_inst_e tim = 0; tim < HAL_TIMER_TIMER_INST_MAX; tim++)
+	{
+		if(hal_timer_is_clk_enabled(tim) == true)
+		{
+			/* Enable counter */
+			vhal_timer_base[tim]->CR1 |= TIM_CR1_CEN;
+		}
+	}
+}
+
+/******************************************************************************/
+/***************************** Static functions *******************************/
+/******************************************************************************/
+
 static void hal_timer_calc_prescaler_counts(uint32_t clk_freq_hz,
 											uint32_t tick_freq_hz,
 											hal_timer_timer_inst_e timer_inst,
@@ -233,6 +269,83 @@ static void hal_timer_enable_clk(hal_timer_timer_inst_e timer_inst)
 
 		/* Do nothing */;
 
+}
+
+static bool hal_timer_is_clk_enabled(hal_timer_timer_inst_e timer_inst)
+{
+	bool ret = false;
+
+	if(timer_inst == HAL_TIMER_TIMER_INST_1)
+	{
+		if((RCC->APB2ENR & RCC_APB2ENR_TIM1EN) == RCC_APB2ENR_TIM1EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_2)
+	{
+		if((RCC->APB1ENR1 & RCC_APB1ENR1_TIM2EN) == RCC_APB1ENR1_TIM2EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_3)
+	{
+		if((RCC->APB1ENR1 & RCC_APB1ENR1_TIM3EN) == RCC_APB1ENR1_TIM3EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_4)
+	{
+		if((RCC->APB1ENR1 & RCC_APB1ENR1_TIM4EN) == RCC_APB1ENR1_TIM4EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_5)
+	{
+		if((RCC->APB1ENR1 & RCC_APB1ENR1_TIM5EN) == RCC_APB1ENR1_TIM5EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_6)
+	{
+		if((RCC->APB1ENR1 & RCC_APB1ENR1_TIM6EN) == RCC_APB1ENR1_TIM6EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_7)
+	{
+		if((RCC->APB1ENR1 |= RCC_APB1ENR1_TIM7EN) == RCC_APB1ENR1_TIM7EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_8)
+	{
+		if((RCC->APB2ENR |= RCC_APB2ENR_TIM8EN) == RCC_APB2ENR_TIM8EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_15)
+	{
+		if((RCC->APB2ENR |= RCC_APB2ENR_TIM15EN) == RCC_APB2ENR_TIM15EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_16)
+	{
+		if((RCC->APB2ENR |= RCC_APB2ENR_TIM16EN) == RCC_APB2ENR_TIM16EN)
+
+			ret = true;
+	}
+	else if(timer_inst == HAL_TIMER_TIMER_INST_17)
+	{
+		if((RCC->APB2ENR |= RCC_APB2ENR_TIM17EN) == RCC_APB2ENR_TIM16EN)
+
+			ret = true;
+	}
+	else
+
+		/* Do nothing */;
+
+	return ret;
 }
 
 static inline void hal_timer_interrupt_handler(hal_timer_timer_inst_e timer_inst)

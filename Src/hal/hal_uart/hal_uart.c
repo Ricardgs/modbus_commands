@@ -11,7 +11,22 @@
 #include <core_cm4.h>
 #include <stdio.h>
 
-#define HAL_UART_BUFFER_DEPTH	100
+/******************************************************************************/
+/*********************************** Macros ***********************************/
+/******************************************************************************/
+
+#define HAL_UART_BUFFER_DEPTH	50
+
+/******************************************************************************/
+/*********************************** Types ************************************/
+/******************************************************************************/
+
+typedef enum
+{
+	HAL_UART_CIRC_BUFF_DIR_RX,
+	HAL_UART_CIRC_BUFF_DIR_TX,
+	HAL_UART_CIRC_BUFF_DIR_MAX
+} hal_uart_circ_buff_dir_e;
 
 typedef struct
 {
@@ -19,6 +34,10 @@ typedef struct
 	uint16_t in_ptr;
 	uint16_t out_ptr;
 } hal_uart_circ_buff_s;
+
+/******************************************************************************/
+/********************** Static function declarations **************************/
+/******************************************************************************/
 
 static void hal_uart_enable_clk(USART_TypeDef *uart_inst);
 static IRQn_Type hal_uart_get_interrupt_source(USART_TypeDef *uart_inst);
@@ -36,15 +55,24 @@ static error_e hal_uart_circ_buff_get_data(hal_uart_uart_num_e uart_num,
 										   uint8_t len);
 static void hal_uart_interrupt_handler(hal_uart_uart_num_e uart_num);
 
-static hal_uart_circ_buff_s hal_uart_circ_buff[HAL_UART_UART_MAX][HAL_UART_CIRC_BUFF_DIR_MAX];
+/******************************************************************************/
+/**************************** Static variables ********************************/
+/******************************************************************************/
 
+static hal_uart_circ_buff_s hal_uart_circ_buff[HAL_UART_UART_MAX][HAL_UART_CIRC_BUFF_DIR_MAX];
 extern USART_TypeDef *hal_uart_inst[HAL_UART_UART_MAX];
+static uint32_t hal_uart_baudrate[HAL_UART_UART_MAX];
+
+/******************************************************************************/
+/***************************** External APIs **********************************/
+/******************************************************************************/
 
 void hal_uart_init(void)
 {
 	for(hal_uart_uart_num_e uart_num = 0; uart_num < HAL_UART_UART_MAX; uart_num++)
 	{
 		hal_uart_init_circular_buffer(uart_num);
+		hal_uart_baudrate[uart_num] = 0;
 	}
 }
 
@@ -189,6 +217,8 @@ void hal_uart_start(hal_uart_config_s config)
 								config.clk_freq_hz,
 								config.baudrate);
 
+	hal_uart_baudrate[config.uart_num] = config.baudrate;
+
 	/* Enable UART */
 	uart_inst->CR1 |= USART_CR1_UE;
 
@@ -197,9 +227,6 @@ void hal_uart_start(hal_uart_config_s config)
 
 	/* Enable RX interrupts */
 	uart_inst->CR1 |= USART_CR1_RXNEIE;
-
-	/* Enable transmitter */
-	uart_inst->CR1 |= USART_CR1_TE;
 
 	/* Enable interrupts in NVIC */
 	NVIC_EnableIRQ(hal_uart_get_interrupt_source(uart_inst));
@@ -225,6 +252,9 @@ error_e hal_uart_send(hal_uart_uart_num_e uart_num,
 	{
 		/* Start transmission */
 		// uart_inst->TDR = hal_uart_circ_buff[uart_num][HAL_UART_CIRC_BUFF_DIR_TX].buffer[hal_uart_circ_buff[uart_num][HAL_UART_CIRC_BUFF_DIR_TX].out_ptr];
+
+		/* Enable transmitter */
+		uart_inst->CR1 |= USART_CR1_TE;
 
 		/* Enable TXE interrupts */
 		uart_inst->CR1 |= USART_CR1_TXEIE;
@@ -261,6 +291,59 @@ void hal_uart_flush_buffer(hal_uart_uart_num_e uart_num)
 {
 	hal_uart_init_circular_buffer(uart_num);
 }
+
+error_e hal_uart_disable(hal_uart_uart_num_e uart_num)
+{
+	USART_TypeDef *uart_inst = hal_uart_inst[uart_num];
+	error_e ret = ERROR_NONE;
+
+	/* The UART can only be disabled if there's no ongoing communication in both
+	 * TX and RX */
+
+	if((uart_inst->ISR & USART_ISR_BUSY) == 0
+		&& (uart_inst->ISR & USART_ISR_RXNE) == 0
+		&& (uart_inst->CR1 & USART_CR1_TE) == 0)
+	{
+		/* Disable uart */
+		uart_inst->CR1 &= ~USART_CR1_UE;
+	}
+
+	return ret;
+}
+
+void hal_uart_enable(hal_uart_uart_num_e uart_num)
+{
+	USART_TypeDef *uart_inst = hal_uart_inst[uart_num];
+
+	uart_inst->CR1 |= USART_CR1_UE;
+}
+
+bool hal_uart_is_disabled(hal_uart_uart_num_e uart_num)
+{
+	USART_TypeDef *uart_inst = hal_uart_inst[uart_num];
+
+	if((uart_inst->CR1 & USART_CR1_UE) == 0)
+
+		return true;
+
+	else
+
+		return false;
+}
+
+void hal_uart_update_clk_freq(uint32_t clk_freq_hz)
+{
+	for(hal_uart_uart_num_e uart_num = 0; uart_num < HAL_UART_UART_MAX; uart_num++)
+
+		/* Set baudrate */
+		(void)hal_uart_set_baudrate(hal_uart_inst[uart_num],
+									clk_freq_hz,
+									hal_uart_baudrate[uart_num]);
+}
+
+/******************************************************************************/
+/*************************** Static functions *********************************/
+/******************************************************************************/
 
 static void hal_uart_enable_clk(USART_TypeDef *uart_inst)
 {
@@ -498,7 +581,11 @@ static void hal_uart_interrupt_handler(hal_uart_uart_num_e uart_num)
 	if((uart_inst->ISR & USART_ISR_TC) == USART_ISR_TC
 		&& (uart_inst->CR1 & USART_CR1_TCIE) == USART_CR1_TCIE)
 	{
-		/* Transfer complete. Disable TCIE */
+		/* Transfer complete. Disable transmitter and TCIE */
+		/* Enable transmitter */
+
+		uart_inst->CR1 &= ~USART_CR1_TE;
+
 		uart_inst->CR1 &= ~(USART_CR1_TCIE);
 	}
 	else if((uart_inst->ISR & USART_ISR_TXE) == USART_ISR_TXE

@@ -57,5 +57,7 @@ error_e hal_timer_attach(hal_timer_timer_inst_e timer_inst,
 void hal_timer_detach(hal_timer_timer_s *timer);
 hal_timer_status_e hal_timer_status_get(hal_timer_timer_s *timer);
 void hal_timer_update_freq(uint32_t clk_freq_hz);
+void hal_timer_stop_all(void);
+void hal_timer_resume_all(void);
 
 #endif /* HAL_HAL_TIMER_HAL_TIMER_H_ */

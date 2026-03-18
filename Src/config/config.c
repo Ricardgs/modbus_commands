@@ -6,15 +6,18 @@
  */
 #include "stdlib.h"
 #include "config.h"
-#include "app_comms_mng/app_comms_mng.h"
-#include "drv_modbus/drv_modbus.h"
-#include "drv_modbus/drv_modbus_common.h"
-#include "drv_led/drv_led.h"
-#include "drv_push_button/drv_push_button.h"
-#include "hal_uart/hal_uart.h"
+#include "hal_os/hal_os.h"
 #include "hal_clk/hal_clk.h"
 #include "hal_pin_mat/hal_pin_mat.h"
-#include "hal_os/hal_os.h"
+#include "hal_uart/hal_uart.h"
+#include "hal_gpio/hal_gpio.h"
+#include "hal_timer/hal_timer.h"
+#include "drv_led/drv_led.h"
+#include "drv_push_button/drv_push_button.h"
+#include "drv_modbus/drv_modbus.h"
+#include "drv_clk_mng/drv_clk_mng.h"
+#include "drv_modbus/drv_modbus_common.h"
+#include "app_comms_mng/app_comms_mng.h"
 
 typedef enum
 {
@@ -27,6 +30,7 @@ typedef enum
 	CONFIG_TASK_LED,
 	CONFIG_TASK_PUSH_BUTTON,
 	CONFIG_TASK_MODBUS,
+	CONFIG_TASK_CLK_MNG,
 	/* APP */
 	CONFIG_TASK_COMMS_MNG,
 
@@ -52,11 +56,11 @@ const hal_uart_config_s config_uart[HAL_UART_UART_MAX] =
 {
 		{
 				.uart_num = HAL_UART_USART_2,
-				.baudrate = 19200,
+				.baudrate = DRV_MODBUS_DEFAULT_BAUDRATE,
 				.clk_freq_hz = HAL_CLK_TARGET_FREQ_HZ,
-				.parity = HAL_UART_PARITY_EVEN,
-				.n_stop_bits = HAL_UART_STOP_BITS_1,
-				.n_bits = HAL_UART_N_BITS_8
+				.parity = DRV_MODBUS_DEFAULT_PARITY,
+				.n_stop_bits = DRV_MODBUS_DEFAULT_STOP_BITS,
+				.n_bits = DRV_MODBUS_DEFAULT_N_BITS
 		}
 };
 
@@ -107,6 +111,7 @@ const config_task_s config_task[CONFIG_TASK_MAX] =
 		{	.init = drv_led_init,			.start = config_led_start,			.fxn = drv_led_fxn			},	// CONFIG_TASK_LED
 		{	.init = drv_push_button_init,	.start = config_push_button_start,	.fxn = drv_push_button_fxn	},	// CONFIG_TASK_PUSH_BUTTON
 		{	.init = drv_modbus_init,		.start = config_modbus_start,		.fxn = drv_modbus_fxn		},	// CONFIG_TASK_MODBUS
+		{	.init = drv_clk_mng_init,		.start = drv_clk_mng_start,			.fxn = drv_clk_mng_fxn		},	// CONFIG_TASK_MODBUS
 		{	.init = app_comms_mng_init,		.start = app_comms_mng_start,		.fxn = app_comms_mng_fxn	},	// CONFIG_TASK_COMMS_MNG
 };
 
