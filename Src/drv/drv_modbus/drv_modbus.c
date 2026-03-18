@@ -59,16 +59,17 @@ typedef enum
 
 static drv_modbus_regs_s vdrv_modbus_regs[DRV_MODBUS_INST_MAX];
 static uint8_t vdrv_modbus_addr[DRV_MODBUS_INST_MAX];
-static status_e vdrv_modbus_status[DRV_MODBUS_INST_MAX] =
+static status_e vdrv_modbus_module_status[DRV_MODBUS_INST_MAX] =
 {
 		STATUS_NOT_INIT
 };
 static hal_timer_timer_s vdrv_modbus_timer[DRV_MODBUS_INST_MAX];
-static hal_timer_timer_inst_e drv_modbus_timer_inst[DRV_MODBUS_INST_MAX];
+static hal_timer_timer_inst_e vdrv_modbus_timer_inst[DRV_MODBUS_INST_MAX];
 static drv_modbus_state_e vdrv_modbus_state[DRV_MODBUS_INST_MAX];
-static hal_uart_uart_num_e drv_modbus_uart_inst[DRV_MODBUS_INST_MAX];
-static uint8_t drv_modbus_frame_index[DRV_MODBUS_INST_MAX];
-static uint8_t drv_modbus_frame_buffer[DRV_MODBUS_INST_MAX][DRV_MODBUS_MAX_FRAME_LEN_BYTES];
+static hal_uart_uart_num_e vdrv_modbus_uart_inst[DRV_MODBUS_INST_MAX];
+static uint8_t vdrv_modbus_frame_index[DRV_MODBUS_INST_MAX];
+static uint8_t vdrv_modbus_frame_buffer[DRV_MODBUS_INST_MAX][DRV_MODBUS_MAX_FRAME_LEN_BYTES];
+static drv_modbus_status_e vdrv_modbus_status[DRV_MODBUS_INST_MAX];
 
 /* Local function declarations */
 
@@ -90,13 +91,15 @@ void drv_modbus_init(void)
 		/* Ensure that the default address is not a valid address */
 		vdrv_modbus_addr[i] = DRV_MODBUS_BROADCAST_ADDRESS;
 
-		vdrv_modbus_status[i] = STATUS_NOT_STARTED;
+		vdrv_modbus_module_status[i] = STATUS_NOT_STARTED;
 
 		hal_timer_detach(&vdrv_modbus_timer[i]);
 
 		vdrv_modbus_state[i] = DRV_MODBUS_STATE_IDLE;
 
-		drv_modbus_frame_index[i] = 0;
+		vdrv_modbus_frame_index[i] = 0;
+
+		vdrv_modbus_status[i] = DRV_MODBUS_STATUS_IDLE;
 	}
 }
 
@@ -104,15 +107,15 @@ void drv_modbus_init(void)
 
 void drv_modbus_start(const drv_modbus_config_s config)
 {
-	if((config.inst < DRV_MODBUS_INST_MAX) && (vdrv_modbus_status[config.inst] == STATUS_NOT_STARTED))
+	if((config.inst < DRV_MODBUS_INST_MAX) && (vdrv_modbus_module_status[config.inst] == STATUS_NOT_STARTED))
 	{
 		vdrv_modbus_addr[config.inst] = config.mb_addr;
 
-		drv_modbus_uart_inst[config.inst] = config.uart_inst;
+		vdrv_modbus_uart_inst[config.inst] = config.uart_inst;
 
-		drv_modbus_timer_inst[config.inst] = config.timer_inst;
+		vdrv_modbus_timer_inst[config.inst] = config.timer_inst;
 
-		vdrv_modbus_status[config.inst] = STATUS_STARTED;
+		vdrv_modbus_module_status[config.inst] = STATUS_STARTED;
 	}
 }
 
@@ -131,7 +134,7 @@ void drv_modbus_fxn(void)
 
 	for(drv_modbus_inst i = 0; i < DRV_MODBUS_INST_MAX; i++)
 	{
-		if(vdrv_modbus_status[i] != STATUS_STARTED)
+		if(vdrv_modbus_module_status[i] != STATUS_STARTED)
 
 			continue;
 
@@ -140,15 +143,17 @@ void drv_modbus_fxn(void)
 
 		case DRV_MODBUS_STATE_IDLE:
 
+			vdrv_modbus_status[i] = DRV_MODBUS_STATUS_IDLE;
+
 			/* Discard every incoming byte until it matches the address */
 
 			if(
-				hal_uart_retrieve(drv_modbus_uart_inst[i],
-								  drv_modbus_frame_buffer[i],
+				hal_uart_retrieve(vdrv_modbus_uart_inst[i],
+								  vdrv_modbus_frame_buffer[i],
 								  1)
 				  == ERROR_NONE
 				&&
-				drv_modbus_frame_buffer[i][0] == vdrv_modbus_addr[i]
+				vdrv_modbus_frame_buffer[i][0] == vdrv_modbus_addr[i]
 			  )
 			{
 				/* The received byte matches the device address */
@@ -157,31 +162,34 @@ void drv_modbus_fxn(void)
 
 				/* The first byte of the frame is already occupied by the device
 				 * address */
-				drv_modbus_frame_index[i] = 1;
+				vdrv_modbus_frame_index[i] = 1;
 
 				/* The timeout is what delimits a frame */
-				hal_timer_attach(drv_modbus_timer_inst[i],
+				hal_timer_attach(vdrv_modbus_timer_inst[i],
 								 &vdrv_modbus_timer[i],
 								 DRV_MODBUS_TIMEOUT_BETWEEN_BYTES_MS);
+
+				/* Busy */
+				vdrv_modbus_status[i] = DRV_MODBUS_STATUS_BUSY;
 			}
 
 			break;
 
 		case DRV_MODBUS_STATE_RECEIVING:
 
-			if(hal_uart_retrieve(drv_modbus_uart_inst[i],
-								 &drv_modbus_frame_buffer[i][drv_modbus_frame_index[i]],
+			if(hal_uart_retrieve(vdrv_modbus_uart_inst[i],
+								 &vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i]],
 								 1)
 				  == ERROR_NONE)
 			{
-				if(++drv_modbus_frame_index[i] >= DRV_MODBUS_MAX_FRAME_LEN_BYTES)
+				if(++vdrv_modbus_frame_index[i] >= DRV_MODBUS_MAX_FRAME_LEN_BYTES)
 
 					/* Too many bytes are being received */
 					vdrv_modbus_state[i] = DRV_MODBUS_STATE_IDLE;
 
 				else
 
-					hal_timer_attach(drv_modbus_timer_inst[i],
+					hal_timer_attach(vdrv_modbus_timer_inst[i],
 									 &vdrv_modbus_timer[i],
 									 DRV_MODBUS_TIMEOUT_BETWEEN_BYTES_MS);
 
@@ -198,13 +206,13 @@ void drv_modbus_fxn(void)
 
 			/* First of all, let's validate the CRC. Remember that the 2 last
 			 * received bytes contain to the CRC */
-			drv_modbus_crc_calc(drv_modbus_frame_buffer[i],
-								drv_modbus_frame_index[i] - 2,
+			drv_modbus_crc_calc(vdrv_modbus_frame_buffer[i],
+								vdrv_modbus_frame_index[i] - 2,
 								crc);
 
-			if(crc[0] == drv_modbus_frame_buffer[i][drv_modbus_frame_index[i] - 2]
+			if(crc[0] == vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i] - 2]
 				&&
-			   crc[1] == drv_modbus_frame_buffer[i][drv_modbus_frame_index[i] - 1])
+			   crc[1] == vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i] - 1])
 			{
 				/* CRC match */
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_CHECK_FC;
@@ -219,19 +227,19 @@ void drv_modbus_fxn(void)
 		case DRV_MODBUS_STATE_CHECK_FC:
 
 			/* Byte 1 contains the Function Code */
-			if(drv_modbus_frame_buffer[i][1] == DRV_MODBUS_FUNCTION_CODE_READ_HOLDING_REGS)
+			if(vdrv_modbus_frame_buffer[i][1] == DRV_MODBUS_FUNCTION_CODE_READ_HOLDING_REGS)
 
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_READ_HOLDING_REGS;
 
-			else if(drv_modbus_frame_buffer[i][1] == DRV_MODBUS_FUNCTION_CODE_READ_INPUT_REGS)
+			else if(vdrv_modbus_frame_buffer[i][1] == DRV_MODBUS_FUNCTION_CODE_READ_INPUT_REGS)
 
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_READ_INPUT_REGS;
 
-			else if(drv_modbus_frame_buffer[i][1] == DRV_MODBUS_FUNCTION_CODE_WRITE_SINGLE_REG)
+			else if(vdrv_modbus_frame_buffer[i][1] == DRV_MODBUS_FUNCTION_CODE_WRITE_SINGLE_REG)
 
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_WRITE_SINGLE_REG;
 
-			else if(drv_modbus_frame_buffer[i][1] == DRV_MODBUS_FUNCTION_CODE_WRITE_MULTIPLE_REGS)
+			else if(vdrv_modbus_frame_buffer[i][1] == DRV_MODBUS_FUNCTION_CODE_WRITE_MULTIPLE_REGS)
 
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_WRITE_MULTIPLE_REGS;
 
@@ -252,7 +260,7 @@ void drv_modbus_fxn(void)
 			 * long. If it is not, then no response must be sent, and the frame
 			 * must be ignored */
 
-			if(drv_modbus_frame_index[i] != 8)
+			if(vdrv_modbus_frame_index[i] != 8)
 
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_IDLE;
 
@@ -261,8 +269,8 @@ void drv_modbus_fxn(void)
 				/* The requested address is contained in bytes 2 and 3 */
 
 				requested_address =
-						(uint16_t)drv_modbus_frame_buffer[i][2] << 8
-						| drv_modbus_frame_buffer[i][3];
+						(uint16_t)vdrv_modbus_frame_buffer[i][2] << 8
+						| vdrv_modbus_frame_buffer[i][3];
 
 				/* Check if the requested address is implemented (i.e. if the
 				 * register exists) */
@@ -282,8 +290,8 @@ void drv_modbus_fxn(void)
 				/* The number of registers is contained in bytes 4 and 5 */
 
 				n_words =
-						(uint16_t)drv_modbus_frame_buffer[i][4] << 8
-						| drv_modbus_frame_buffer[i][5];
+						(uint16_t)vdrv_modbus_frame_buffer[i][4] << 8
+						| vdrv_modbus_frame_buffer[i][5];
 
 				/* Check if the request leads to an inexistent address */
 
@@ -334,39 +342,39 @@ void drv_modbus_fxn(void)
 					 * function code respectively, and shall not be modified */
 
 					/* Byte 2 contains the byte count */
-					drv_modbus_frame_buffer[i][2] = n_words << 1;
+					vdrv_modbus_frame_buffer[i][2] = n_words << 1;
 
 					/* The next bytes contain the register values */
 
-					drv_modbus_frame_index[i] = 3;
+					vdrv_modbus_frame_index[i] = 3;
 
 					for(j = 0; j < n_words; j++)
 					{
 						/* High order byte first */
-						drv_modbus_frame_buffer[i][drv_modbus_frame_index[i] + (j << 1)]
+						vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i] + (j << 1)]
 						   = (uint8_t)(vdrv_modbus_regs[i].holding_regs_val[reg_index + j] >> 8 & 0x00FF);
 
 						/* Low order byte */
-						drv_modbus_frame_buffer[i][drv_modbus_frame_index[i] + (j << 1) + 1]
+						vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i] + (j << 1) + 1]
 						   = (uint8_t)(vdrv_modbus_regs[i].holding_regs_val[reg_index + j] & 0x00FF);
 					}
 
-					drv_modbus_frame_index[i] += n_words << 1;
+					vdrv_modbus_frame_index[i] += n_words << 1;
 
 					/* CRC */
 
-					drv_modbus_crc_calc(drv_modbus_frame_buffer[i],
-										drv_modbus_frame_index[i],
+					drv_modbus_crc_calc(vdrv_modbus_frame_buffer[i],
+										vdrv_modbus_frame_index[i],
 										crc);
 
-					drv_modbus_frame_buffer[i][drv_modbus_frame_index[i]++]
+					vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i]++]
 					   = crc[0];
 
-					drv_modbus_frame_buffer[i][drv_modbus_frame_index[i]++]
+					vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i]++]
 					   = crc[1];
 
 					/* Delay before sending response */
-					hal_timer_attach(drv_modbus_timer_inst[i],
+					hal_timer_attach(vdrv_modbus_timer_inst[i],
 									 &vdrv_modbus_timer[i],
 									 DRV_MODBUS_TIME_BETWEEN_FRAMES_MS);
 
@@ -383,7 +391,7 @@ void drv_modbus_fxn(void)
 			 * long. If it is not, then no response must be sent, and the frame
 			 * must be ignored */
 
-			if(drv_modbus_frame_index[i] != 8)
+			if(vdrv_modbus_frame_index[i] != 8)
 
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_IDLE;
 
@@ -392,8 +400,8 @@ void drv_modbus_fxn(void)
 				/* The requested address is contained in bytes 2 and 3 */
 
 				requested_address =
-						(uint16_t)drv_modbus_frame_buffer[i][2] << 8
-						| drv_modbus_frame_buffer[i][3];
+						(uint16_t)vdrv_modbus_frame_buffer[i][2] << 8
+						| vdrv_modbus_frame_buffer[i][3];
 
 				/* Check if the requested address is implemented (i.e. if the
 				 * register exists) */
@@ -413,8 +421,8 @@ void drv_modbus_fxn(void)
 				/* The number of registers is contained in bytes 4 and 5 */
 
 				n_words =
-						(uint16_t)drv_modbus_frame_buffer[i][4] << 8
-						| drv_modbus_frame_buffer[i][5];
+						(uint16_t)vdrv_modbus_frame_buffer[i][4] << 8
+						| vdrv_modbus_frame_buffer[i][5];
 
 				/* Check if the request leads to an inexistent address */
 
@@ -465,39 +473,39 @@ void drv_modbus_fxn(void)
 					 * function code respectively, and shall not be modified */
 
 					/* Byte 2 contains the byte count */
-					drv_modbus_frame_buffer[i][2] = n_words << 1;
+					vdrv_modbus_frame_buffer[i][2] = n_words << 1;
 
 					/* The next bytes contain the register values */
 
-					drv_modbus_frame_index[i] = 3;
+					vdrv_modbus_frame_index[i] = 3;
 
 					for(j = 0; j < n_words; j++)
 					{
 						/* High order byte first */
-						drv_modbus_frame_buffer[i][drv_modbus_frame_index[i] + (j << 1)]
+						vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i] + (j << 1)]
 						   = (uint8_t)(vdrv_modbus_regs[i].input_regs_val[reg_index + j] >> 8 & 0x00FF);
 
 						/* Low order byte */
-						drv_modbus_frame_buffer[i][drv_modbus_frame_index[i] + (j << 1) + 1]
+						vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i] + (j << 1) + 1]
 						   = (uint8_t)(vdrv_modbus_regs[i].input_regs_val[reg_index + j] & 0x00FF);
 					}
 
-					drv_modbus_frame_index[i] += n_words << 1;
+					vdrv_modbus_frame_index[i] += n_words << 1;
 
 					/* CRC */
 
-					drv_modbus_crc_calc(drv_modbus_frame_buffer[i],
-										drv_modbus_frame_index[i],
+					drv_modbus_crc_calc(vdrv_modbus_frame_buffer[i],
+										vdrv_modbus_frame_index[i],
 										crc);
 
-					drv_modbus_frame_buffer[i][drv_modbus_frame_index[i]++]
+					vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i]++]
 					   = crc[0];
 
-					drv_modbus_frame_buffer[i][drv_modbus_frame_index[i]++]
+					vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i]++]
 					   = crc[1];
 
 					/* Delay before sending response */
-					hal_timer_attach(drv_modbus_timer_inst[i],
+					hal_timer_attach(vdrv_modbus_timer_inst[i],
 									 &vdrv_modbus_timer[i],
 									 DRV_MODBUS_TIME_BETWEEN_FRAMES_MS);
 
@@ -513,7 +521,7 @@ void drv_modbus_fxn(void)
 			 * long. If it is not, then no response must be sent, and the frame
 			 * must be ignored */
 
-			if(drv_modbus_frame_index[i] != 8)
+			if(vdrv_modbus_frame_index[i] != 8)
 
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_IDLE;
 
@@ -522,8 +530,8 @@ void drv_modbus_fxn(void)
 				/* The requested address is contained in bytes 2 and 3 */
 
 				requested_address =
-						(uint16_t)drv_modbus_frame_buffer[i][2] << 8
-						| drv_modbus_frame_buffer[i][3];
+						(uint16_t)vdrv_modbus_frame_buffer[i][2] << 8
+						| vdrv_modbus_frame_buffer[i][3];
 
 				/* Check if the requested address is implemented (i.e. if the
 				 * register exists) */
@@ -549,14 +557,14 @@ void drv_modbus_fxn(void)
 					/* Bytes 4 and 5 contain the register value */
 
 					vdrv_modbus_regs[i].holding_regs_val[reg_index]
-						  = (uint16_t)(drv_modbus_frame_buffer[i][4]) << 8
-							| drv_modbus_frame_buffer[i][5];
+						  = (uint16_t)(vdrv_modbus_frame_buffer[i][4]) << 8
+							| vdrv_modbus_frame_buffer[i][5];
 
 					/* The response is exactly the same as the request, so no
-					 * need to modify drv_modbus_frame_buffer[i] */
+					 * need to modify vdrv_modbus_frame_buffer[i] */
 
 					/* Delay before sending response */
-					hal_timer_attach(drv_modbus_timer_inst[i],
+					hal_timer_attach(vdrv_modbus_timer_inst[i],
 									 &vdrv_modbus_timer[i],
 									 DRV_MODBUS_TIME_BETWEEN_FRAMES_MS);
 
@@ -578,17 +586,17 @@ void drv_modbus_fxn(void)
 
 			/* Quantity of registers is specified in bytes 4 and 5 */
 			n_words =
-					(uint16_t)drv_modbus_frame_buffer[i][4] << 8
-					| drv_modbus_frame_buffer[i][5];
+					(uint16_t)vdrv_modbus_frame_buffer[i][4] << 8
+					| vdrv_modbus_frame_buffer[i][5];
 
 			/* Byte count is specified in byte 6 */
-			byte_count = drv_modbus_frame_buffer[i][6];
+			byte_count = vdrv_modbus_frame_buffer[i][6];
 
 			/* Knowing the quantity of registers, the correct frame length can
 			 * be calculated. If the frame exceeds the length or lacks bytes,
 			 * then it must be ignored */
 
-			if(drv_modbus_frame_index[i] != 9 + byte_count)
+			if(vdrv_modbus_frame_index[i] != 9 + byte_count)
 
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_IDLE;
 
@@ -597,8 +605,8 @@ void drv_modbus_fxn(void)
 				/* The requested address is contained in bytes 2 and 3 */
 
 				requested_address =
-						(uint16_t)drv_modbus_frame_buffer[i][2] << 8
-						| drv_modbus_frame_buffer[i][3];
+						(uint16_t)vdrv_modbus_frame_buffer[i][2] << 8
+						| vdrv_modbus_frame_buffer[i][3];
 
 				/* Check if the requested address is implemented (i.e. if the
 				 * register exists) */
@@ -665,8 +673,8 @@ void drv_modbus_fxn(void)
 					for(j = reg_index; j < reg_index + n_words; j++)
 					{
 						vdrv_modbus_regs[i].holding_regs_val[j]
-							 = ((uint16_t)drv_modbus_frame_buffer[i][7 + ((j - reg_index) << 1)]) << 8
-								|  drv_modbus_frame_buffer[i][7 + ((j - reg_index) << 1) + 1];
+							 = ((uint16_t)vdrv_modbus_frame_buffer[i][7 + ((j - reg_index) << 1)]) << 8
+								|  vdrv_modbus_frame_buffer[i][7 + ((j - reg_index) << 1) + 1];
 					}
 
 					/* Build response */
@@ -674,22 +682,22 @@ void drv_modbus_fxn(void)
 					/* The first 6 bytes of the response are the first 6 bytes
 					 * of the request */
 
-					drv_modbus_frame_index[i] = 6;
+					vdrv_modbus_frame_index[i] = 6;
 
 					/* CRC */
 
-					drv_modbus_crc_calc(drv_modbus_frame_buffer[i],
-										drv_modbus_frame_index[i],
+					drv_modbus_crc_calc(vdrv_modbus_frame_buffer[i],
+										vdrv_modbus_frame_index[i],
 										crc);
 
-					drv_modbus_frame_buffer[i][drv_modbus_frame_index[i]++]
+					vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i]++]
 					   = crc[0];
 
-					drv_modbus_frame_buffer[i][drv_modbus_frame_index[i]++]
+					vdrv_modbus_frame_buffer[i][vdrv_modbus_frame_index[i]++]
 					   = crc[1];
 
 					/* Delay before sending response */
-					hal_timer_attach(drv_modbus_timer_inst[i],
+					hal_timer_attach(vdrv_modbus_timer_inst[i],
 									 &vdrv_modbus_timer[i],
 									 DRV_MODBUS_TIME_BETWEEN_FRAMES_MS);
 
@@ -703,21 +711,21 @@ void drv_modbus_fxn(void)
 
 			/* Byte 0 already contains the device address. Byte 1 needs to
 			 * be OR'ed with 0x80 */
-			drv_modbus_frame_buffer[i][1] |= 0x80;
+			vdrv_modbus_frame_buffer[i][1] |= 0x80;
 
 			/* Byte 2 must contain the exception code */
-			drv_modbus_frame_buffer[i][2] = exception_code;
+			vdrv_modbus_frame_buffer[i][2] = exception_code;
 
 			/* Bytes 3 and 4 must contain the CRC */
-			drv_modbus_crc_calc(drv_modbus_frame_buffer[i],
+			drv_modbus_crc_calc(vdrv_modbus_frame_buffer[i],
 								3,
-								&drv_modbus_frame_buffer[i][3]);
+								&vdrv_modbus_frame_buffer[i][3]);
 
-			/* Set drv_modbus_frame_index to the total number of bytes to send */
-			drv_modbus_frame_index[i] = 5;
+			/* Set vdrv_modbus_frame_index to the total number of bytes to send */
+			vdrv_modbus_frame_index[i] = 5;
 
 			/* Delay before sending response */
-			hal_timer_attach(drv_modbus_timer_inst[i],
+			hal_timer_attach(vdrv_modbus_timer_inst[i],
 							 &vdrv_modbus_timer[i],
 							 DRV_MODBUS_TIME_BETWEEN_FRAMES_MS);
 
@@ -738,9 +746,9 @@ void drv_modbus_fxn(void)
 
 		case DRV_MODBUS_STATE_SEND_RESPONSE:
 
-			if(hal_uart_send(drv_modbus_uart_inst[i],
-							 drv_modbus_frame_buffer[i],
-							 drv_modbus_frame_index[i])
+			if(hal_uart_send(vdrv_modbus_uart_inst[i],
+							 vdrv_modbus_frame_buffer[i],
+							 vdrv_modbus_frame_index[i])
 				== ERROR_NONE)
 
 				vdrv_modbus_state[i] = DRV_MODBUS_STATE_IDLE;
@@ -755,6 +763,21 @@ void drv_modbus_fxn(void)
 		}
 	}
 }
+
+drv_modbus_status_e drv_modbus_status_get(drv_modbus_inst inst)
+{
+	if(inst < DRV_MODBUS_INST_MAX)
+
+		return vdrv_modbus_status[inst];
+
+	else
+
+		return DRV_MODBUS_STATUS_BUSY;
+}
+
+/******************************************************************************/
+/**************************** Static functions ********************************/
+/******************************************************************************/
 
 static void drv_modbus_crc_calc(uint8_t *buff, uint16_t len, uint8_t crc_buff[2])
 {

@@ -67,5 +67,9 @@ error_e hal_uart_disable(hal_uart_uart_num_e uart_num);
 void hal_uart_enable(hal_uart_uart_num_e uart_num);
 bool hal_uart_is_disabled(hal_uart_uart_num_e uart_num);
 void hal_uart_update_clk_freq(uint32_t clk_freq_hz);
+void hal_uart_change_baudrate(hal_uart_uart_num_e uart_num,
+							  uint32_t new_baudrate,
+							  uint32_t clk_freq_hz);
+uint32_t hal_uart_baudrate_get(hal_uart_uart_num_e uart_num);
 
 #endif /* HAL_HAL_UART_HAL_UART_H_ */

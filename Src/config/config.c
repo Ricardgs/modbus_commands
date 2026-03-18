@@ -18,6 +18,8 @@
 #include "drv_clk_mng/drv_clk_mng.h"
 #include "drv_modbus/drv_modbus_common.h"
 #include "app_comms_mng/app_comms_mng.h"
+#include "app_baudrate_mng/app_baudrate_mng.h"
+#include "app_data_handler/app_data_handler.h"
 
 typedef enum
 {
@@ -33,6 +35,8 @@ typedef enum
 	CONFIG_TASK_CLK_MNG,
 	/* APP */
 	CONFIG_TASK_COMMS_MNG,
+	CONFIG_TASK_BAUDRATE_MNG,
+	CONFIG_TASK_DATA_HANDLER,
 
 	CONFIG_TASK_MAX
 } config_tasks_e;
@@ -49,10 +53,11 @@ void config_timer_start(void);
 void config_led_start(void);
 void config_push_button_start(void);
 void config_modbus_start(void);
+void config_baudrate_mng_start(void);
 
-extern const config_task_s config_task[CONFIG_TASK_MAX];
+extern const config_task_s vconfig_task[CONFIG_TASK_MAX];
 
-const hal_uart_config_s config_uart[HAL_UART_UART_MAX] =
+const hal_uart_config_s vconfig_uart[HAL_UART_UART_MAX] =
 {
 		{
 				.uart_num = HAL_UART_USART_2,
@@ -64,7 +69,7 @@ const hal_uart_config_s config_uart[HAL_UART_UART_MAX] =
 		}
 };
 
-const hal_timer_config_s config_timer[] =
+const hal_timer_config_s vconfig_timer[] =
 {
 		{
 				.timer_inst = HAL_TIMER_TIMER_INST_6,
@@ -73,7 +78,7 @@ const hal_timer_config_s config_timer[] =
 		}
 };
 
-const drv_led_congif_s config_led[DRV_LED_INST_MAX] =
+const drv_led_congif_s vconfig_led[DRV_LED_INST_MAX] =
 {
 		{
 				.led_inst = DRV_LED_INST_0,
@@ -83,7 +88,7 @@ const drv_led_congif_s config_led[DRV_LED_INST_MAX] =
 		}
 };
 
-const drv_hal_push_button_config_s config_push_button[DRV_PUSH_BUTTON_MAX] =
+const drv_hal_push_button_config_s vconfig_push_button[DRV_PUSH_BUTTON_MAX] =
 {
 		{
 				.push_button_inst = DRV_PUSH_BUTTON_0,
@@ -92,17 +97,26 @@ const drv_hal_push_button_config_s config_push_button[DRV_PUSH_BUTTON_MAX] =
 		}
 };
 
-const drv_modbus_config_s config_modbus[DRV_MODBUS_INST_MAX] =
+const drv_modbus_config_s vconfig_modbus[DRV_MODBUS_INST_MAX] =
 {
 		{
 				.inst = DRV_MODBUS_INST_0,
 				.uart_inst = HAL_UART_USART_2,
 				.timer_inst = HAL_TIMER_TIMER_INST_6,
-				.mb_addr = 0x10,
+				.mb_addr = 0x10
 		}
 };
 
-const config_task_s config_task[CONFIG_TASK_MAX] =
+const app_baudrate_mng_config_t vconfig_baudrate_mng[DRV_MODBUS_INST_MAX] =
+{
+		{
+				.modbus_inst = DRV_MODBUS_INST_0,
+				.uart_num = HAL_UART_USART_2,
+				.baudrate = DRV_MODBUS_DEFAULT_BAUDRATE
+		}
+};
+
+const config_task_s vconfig_task[CONFIG_TASK_MAX] =
 {
 		{	.init = hal_pin_mat_init,		.start = hal_pin_mat_start,			.fxn = NULL					},	// CONFIG_TASK_PIN_MAT
 		{	.init = hal_uart_init,			.start = config_uart_start,			.fxn = NULL					},	// CONFIG_TASK_UART
@@ -113,18 +127,20 @@ const config_task_s config_task[CONFIG_TASK_MAX] =
 		{	.init = drv_modbus_init,		.start = config_modbus_start,		.fxn = drv_modbus_fxn		},	// CONFIG_TASK_MODBUS
 		{	.init = drv_clk_mng_init,		.start = drv_clk_mng_start,			.fxn = drv_clk_mng_fxn		},	// CONFIG_TASK_MODBUS
 		{	.init = app_comms_mng_init,		.start = app_comms_mng_start,		.fxn = app_comms_mng_fxn	},	// CONFIG_TASK_COMMS_MNG
+		{	.init = app_baudrate_mng_init,	.start = config_baudrate_mng_start,	.fxn = app_baudrate_mng_fxn	},	// CONFIG_TASK_BAUDRATE_MNG
+		{	.init = app_data_handler_init,	.start = app_data_handler_start,	.fxn = app_data_handler_fxn	},	// CONFIG_TASK_DATA_HANDLER
 };
 
 void config_init_tasks(void)
 {
 	for(config_tasks_e i = 0; i < CONFIG_TASK_MAX; i++)
 	{
-		config_task[i].init();
-		config_task[i].start();
+		vconfig_task[i].init();
+		vconfig_task[i].start();
 
-		if(config_task[i].fxn != NULL)
+		if(vconfig_task[i].fxn != NULL)
 
-			hal_os_task_attach(config_task[i].fxn);
+			hal_os_task_attach(vconfig_task[i].fxn);
 	}
 }
 
@@ -132,33 +148,40 @@ void config_uart_start(void)
 {
 	for(int i = 0; i < HAL_UART_UART_MAX; i++)
 
-		hal_uart_start(config_uart[i]);
+		hal_uart_start(vconfig_uart[i]);
 }
 
 void config_timer_start(void)
 {
-	for(int i = 0; i < sizeof(config_timer) / sizeof(hal_timer_config_s); i++)
+	for(int i = 0; i < sizeof(vconfig_timer) / sizeof(hal_timer_config_s); i++)
 
-		hal_timer_start(config_timer[i]);
+		hal_timer_start(vconfig_timer[i]);
 }
 
 void config_led_start(void)
 {
 	for(int i = 0; i < DRV_LED_INST_MAX; i++)
 
-		drv_led_start(config_led[i]);
+		drv_led_start(vconfig_led[i]);
 }
 
 void config_push_button_start(void)
 {
 	for(int i = 0; i < DRV_PUSH_BUTTON_MAX; i++)
 
-		drv_push_button_start(config_push_button[i]);
+		drv_push_button_start(vconfig_push_button[i]);
 }
 
 void config_modbus_start(void)
 {
 	for(int i = 0; i < DRV_MODBUS_INST_MAX; i++)
 
-		drv_modbus_start(config_modbus[i]);
+		drv_modbus_start(vconfig_modbus[i]);
+}
+
+void config_baudrate_mng_start(void)
+{
+	for(int i = 0; i < DRV_MODBUS_INST_MAX; i++)
+
+		app_baudrate_mng_start(&vconfig_baudrate_mng[i]);
 }

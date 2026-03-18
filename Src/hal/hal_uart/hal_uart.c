@@ -341,6 +341,32 @@ void hal_uart_update_clk_freq(uint32_t clk_freq_hz)
 									hal_uart_baudrate[uart_num]);
 }
 
+void hal_uart_change_baudrate(hal_uart_uart_num_e uart_num,
+							  uint32_t new_baudrate,
+							  uint32_t clk_freq_hz)
+{
+	if(uart_num < HAL_UART_UART_MAX)
+	{
+		/* Set baudrate */
+		(void)hal_uart_set_baudrate(hal_uart_inst[uart_num],
+									clk_freq_hz,
+									new_baudrate);
+
+		hal_uart_baudrate[uart_num] = new_baudrate;
+	}
+}
+
+uint32_t hal_uart_baudrate_get(hal_uart_uart_num_e uart_num)
+{
+	if(uart_num < HAL_UART_UART_MAX)
+
+		return hal_uart_baudrate[uart_num];
+
+	else
+
+		return 0;
+}
+
 /******************************************************************************/
 /*************************** Static functions *********************************/
 /******************************************************************************/

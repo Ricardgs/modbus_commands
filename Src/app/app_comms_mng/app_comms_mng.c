@@ -7,7 +7,6 @@
 
 #include "app_comms_mng.h"
 #include "drv_modbus/drv_modbus_registers.h"
-#include "drv_modbus/drv_modbus_common.h"
 #include "drv_led/drv_led.h"
 #include "drv_push_button/drv_push_button.h"
 #include "drv_clk_mng/drv_clk_mng.h"
@@ -17,9 +16,13 @@
 #define APP_COMMS_MNG_LED_ON_REG_VAL	1
 #define APP_COMMS_MNG_LED_BLINK_REG_VAL	2
 
+static uint32_t vapp_comms_mng_baudrate_request[DRV_MODBUS_INST_MAX];
+
 void app_comms_mng_init(void)
 {
+	for(drv_modbus_inst i = 0; i < DRV_MODBUS_INST_MAX; i++)
 
+		vapp_comms_mng_baudrate_request[i] = DRV_MODBUS_DEFAULT_BAUDRATE;
 }
 
 void app_comms_mng_start(void)
@@ -64,7 +67,7 @@ void app_comms_mng_start(void)
 							  DRV_MODBUS_0_HOLDING_REG_REQUESTED_CLK_FREQ_LOW,
 							  data_16);
 
-	/* Baudrate high */
+	/* Baud rate high */
 
 	data_16 = (uint16_t)(DRV_MODBUS_DEFAULT_BAUDRATE >> 16);
 
@@ -73,7 +76,7 @@ void app_comms_mng_start(void)
 							  DRV_MODBUS_0_HOLDING_REG_BAUDRATE_HIGH,
 							  data_16);
 
-	/* Baudrate low */
+	/* Baud rate low */
 
 	data_16 = (uint16_t)DRV_MODBUS_DEFAULT_BAUDRATE;
 
@@ -119,7 +122,7 @@ void app_comms_mng_fxn(void)
 
 	/* Modbus 0 holding registers */
 
-	/* Clk frequency */
+	/* Clock frequency */
 
 	drv_modbus_read_register(DRV_MODBUS_INST_0,
 							 DRV_MODBUS_REGISTER_TYPE_HOLDING,
@@ -136,6 +139,24 @@ void app_comms_mng_fxn(void)
 	data_32 |= (uint32_t)data_16;
 
 	drv_clk_mng_set_request(data_32);
+
+	/* Baud rate */
+
+	drv_modbus_read_register(DRV_MODBUS_INST_0,
+							 DRV_MODBUS_REGISTER_TYPE_HOLDING,
+							 DRV_MODBUS_0_HOLDING_REG_BAUDRATE_HIGH,
+							 &data_16);
+
+	data_32 = ((uint32_t)data_16) << 16;
+
+	drv_modbus_read_register(DRV_MODBUS_INST_0,
+							 DRV_MODBUS_REGISTER_TYPE_HOLDING,
+							 DRV_MODBUS_0_HOLDING_REG_BAUDRATE_LOW,
+							 &data_16);
+
+	data_32 |= (uint32_t)data_16;
+
+	vapp_comms_mng_baudrate_request[DRV_MODBUS_INST_0] = data_32;
 
 	/* Led */
 
@@ -156,5 +177,16 @@ void app_comms_mng_fxn(void)
 
 		drv_led_set_request(DRV_LED_INST_0, DRV_LED_REQUEST_BLINK);
 
+}
+
+uint32_t app_comms_mng_baurdate_request_get(drv_modbus_inst modbus_inst)
+{
+	if(modbus_inst < DRV_MODBUS_INST_MAX)
+
+		return vapp_comms_mng_baudrate_request[modbus_inst];
+
+	else
+
+		return 0;
 }
 

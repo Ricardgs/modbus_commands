@@ -79,11 +79,13 @@ def print_frame(buf: bytearray):
 			print("")
 
 frequency = 60000000
+baudrate = 19200
 
 slave_address = 0x10
-target_register_address = 0x0000
+target_register_address = 0x0002
 number_of_regsiters = 2
-write_values = [frequency >> 16, frequency & 0xFFFF] # clk freq
+# write_values = [frequency >> 16, frequency & 0xFFFF] # clk freq
+write_values = [baudrate >> 16, baudrate & 0xFFFF] # baud rate
 # write_values = [2] # led blink
 
  # Build frame
