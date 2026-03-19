@@ -24,7 +24,7 @@ typedef struct
 } drv_hal_push_button_config_s;
 
 void drv_push_button_init(void);
-void drv_push_button_start(const drv_hal_push_button_config_s push_button_config);
+void drv_push_button_start(const drv_hal_push_button_config_s *push_button_config);
 void drv_push_button_fxn(void);
 uint8_t drv_push_button_read(drv_push_button_inst_e push_button_inst);
 

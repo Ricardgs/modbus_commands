@@ -28,7 +28,7 @@ typedef enum
 } drv_modbus_status_e;
 
 void drv_modbus_init(void);
-void drv_modbus_start(const drv_modbus_config_s config);
+void drv_modbus_start(const drv_modbus_config_s *config);
 void drv_modbus_fxn(void);
 drv_modbus_status_e drv_modbus_status_get(drv_modbus_inst inst);
 

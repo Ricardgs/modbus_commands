@@ -55,7 +55,7 @@ typedef struct
 } hal_uart_config_s;
 
 void hal_uart_init(void);
-void hal_uart_start(hal_uart_config_s config);
+void hal_uart_start(const hal_uart_config_s *config);
 error_e hal_uart_send(hal_uart_uart_num_e uart_num,
 					  uint8_t *buf,
 					  uint8_t len);

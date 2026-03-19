@@ -105,17 +105,17 @@ void drv_modbus_init(void)
 
 /* Configure */
 
-void drv_modbus_start(const drv_modbus_config_s config)
+void drv_modbus_start(const drv_modbus_config_s *config)
 {
-	if((config.inst < DRV_MODBUS_INST_MAX) && (vdrv_modbus_module_status[config.inst] == STATUS_NOT_STARTED))
+	if((config->inst < DRV_MODBUS_INST_MAX) && (vdrv_modbus_module_status[config->inst] == STATUS_NOT_STARTED))
 	{
-		vdrv_modbus_addr[config.inst] = config.mb_addr;
+		vdrv_modbus_addr[config->inst] = config->mb_addr;
 
-		vdrv_modbus_uart_inst[config.inst] = config.uart_inst;
+		vdrv_modbus_uart_inst[config->inst] = config->uart_inst;
 
-		vdrv_modbus_timer_inst[config.inst] = config.timer_inst;
+		vdrv_modbus_timer_inst[config->inst] = config->timer_inst;
 
-		vdrv_modbus_module_status[config.inst] = STATUS_STARTED;
+		vdrv_modbus_module_status[config->inst] = STATUS_STARTED;
 	}
 }
 

@@ -76,24 +76,24 @@ void hal_uart_init(void)
 	}
 }
 
-void hal_uart_start(hal_uart_config_s config)
+void hal_uart_start(const hal_uart_config_s *config)
 {
-	USART_TypeDef *uart_inst = hal_uart_inst[config.uart_num];
+	USART_TypeDef *uart_inst = hal_uart_inst[config->uart_num];
 
 	/* Sanity check */
 
-	if(config.uart_num >= HAL_UART_UART_MAX
-		|| config.n_bits >= HAL_UART_N_BITS_MAX
-		|| config.n_stop_bits >= HAL_UART_STOP_BITS_MAX
-		|| config.parity >= HAL_UART_PARITY_MAX)
+	if(config->uart_num >= HAL_UART_UART_MAX
+		|| config->n_bits >= HAL_UART_N_BITS_MAX
+		|| config->n_stop_bits >= HAL_UART_STOP_BITS_MAX
+		|| config->parity >= HAL_UART_PARITY_MAX)
 
 		return;
 
-	/* If frame length is only 6 bits, then parity bit must be included. If
-	 * frame length is 9 bits, then parity bit cannot be included. For other
+	/* If frame length is only 6 bits, then parity bit must be included-> If
+	 * frame length is 9 bits, then parity bit cannot be included-> For other
 	 * frame lengths, parity bit may be or may be not included */
-	if((config.n_bits == HAL_UART_N_BITS_6 && config.parity == HAL_UART_PARITY_NONE)
-		|| (config.n_bits == HAL_UART_N_BITS_9 && config.parity != HAL_UART_PARITY_NONE))
+	if((config->n_bits == HAL_UART_N_BITS_6 && config->parity == HAL_UART_PARITY_NONE)
+		|| (config->n_bits == HAL_UART_N_BITS_9 && config->parity != HAL_UART_PARITY_NONE))
 
 		return;
 
@@ -101,7 +101,7 @@ void hal_uart_start(hal_uart_config_s config)
 
 	/* Configure number of bits and parity */
 
-	if(config.n_bits == HAL_UART_N_BITS_6)
+	if(config->n_bits == HAL_UART_N_BITS_6)
 	{
 		/* With 6 bits of data, parity bit must be included */
 
@@ -109,7 +109,7 @@ void hal_uart_start(hal_uart_config_s config)
 		uart_inst->CR1 &= ~USART_CR1_M0;
 		uart_inst->CR1 |= USART_CR1_PCE;
 
-		if(config.parity == HAL_UART_PARITY_ODD)
+		if(config->parity == HAL_UART_PARITY_ODD)
 		{
 			/* Odd parity */
 			uart_inst->CR1 |= USART_CR1_PS;
@@ -120,18 +120,18 @@ void hal_uart_start(hal_uart_config_s config)
 			uart_inst->CR1 &= ~USART_CR1_PS;
 		}
 	}
-	else if(config.n_bits == HAL_UART_N_BITS_7)
+	else if(config->n_bits == HAL_UART_N_BITS_7)
 	{
 		/* With 7 bits, parity may be or may be not included */
 
-		if(config.parity == HAL_UART_PARITY_NONE)
+		if(config->parity == HAL_UART_PARITY_NONE)
 		{
 			/* No parity bit */
 			uart_inst->CR1 |= USART_CR1_M1;
 			uart_inst->CR1 &= ~USART_CR1_M0;
 			uart_inst->CR1 &= ~USART_CR1_PCE;
 		}
-		else if(config.parity == HAL_UART_PARITY_ODD)
+		else if(config->parity == HAL_UART_PARITY_ODD)
 		{
 			/* Odd parity */
 			uart_inst->CR1 &= ~USART_CR1_M1;
@@ -148,18 +148,18 @@ void hal_uart_start(hal_uart_config_s config)
 			uart_inst->CR1 &= ~USART_CR1_PS;
 		}
 	}
-	else if(config.n_bits == HAL_UART_N_BITS_8)
+	else if(config->n_bits == HAL_UART_N_BITS_8)
 	{
 		/* With 8 bits, parity may be or may be not included */
 
-		if(config.parity == HAL_UART_PARITY_NONE)
+		if(config->parity == HAL_UART_PARITY_NONE)
 		{
 			/* No parity bit */
 			uart_inst->CR1 &= ~USART_CR1_M1;
 			uart_inst->CR1 &= ~USART_CR1_M0;
 			uart_inst->CR1 &= ~USART_CR1_PCE;
 		}
-		else if(config.parity == HAL_UART_PARITY_ODD)
+		else if(config->parity == HAL_UART_PARITY_ODD)
 		{
 			/* Odd parity */
 			uart_inst->CR1 &= ~USART_CR1_M1;
@@ -187,21 +187,21 @@ void hal_uart_start(hal_uart_config_s config)
 
 	/* Stop bits */
 
-	if(config.n_stop_bits == HAL_UART_STOP_BITS_0_5)
+	if(config->n_stop_bits == HAL_UART_STOP_BITS_0_5)
 	{
-		/* 0.5 stop bits */
+		/* 0->5 stop bits */
 		uart_inst->CR2 &= ~USART_CR2_STOP_1;
 		uart_inst->CR2 |= USART_CR2_STOP_0;
 	}
-	else if(config.n_stop_bits == HAL_UART_STOP_BITS_1)
+	else if(config->n_stop_bits == HAL_UART_STOP_BITS_1)
 	{
 		/* 1 stop bit */
 		uart_inst->CR2 &= ~USART_CR2_STOP_1;
 		uart_inst->CR2 &= ~USART_CR2_STOP_0;
 	}
-	else if(config.n_stop_bits == HAL_UART_STOP_BITS_1)
+	else if(config->n_stop_bits == HAL_UART_STOP_BITS_1)
 	{
-		/* 1.5 stop bit */
+		/* 1->5 stop bit */
 		uart_inst->CR2 |= USART_CR2_STOP_1;
 		uart_inst->CR2 |= USART_CR2_STOP_0;
 	}
@@ -214,10 +214,10 @@ void hal_uart_start(hal_uart_config_s config)
 
 	/* Set baudrate */
 	(void)hal_uart_set_baudrate(uart_inst,
-								config.clk_freq_hz,
-								config.baudrate);
+								config->clk_freq_hz,
+								config->baudrate);
 
-	hal_uart_baudrate[config.uart_num] = config.baudrate;
+	hal_uart_baudrate[config->uart_num] = config->baudrate;
 
 	/* Enable UART */
 	uart_inst->CR1 |= USART_CR1_UE;

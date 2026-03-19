@@ -34,7 +34,7 @@ typedef enum
 } drv_led_request_e;
 
 void drv_led_init(void);
-void drv_led_start(const drv_led_congif_s led_config);
+void drv_led_start(const drv_led_congif_s *led_config);
 void drv_led_fxn(void);
 void drv_led_set_request(drv_led_inst_e led_inst, drv_led_request_e request);
 

@@ -15,15 +15,15 @@ void drv_push_button_init(void)
 	/* Nothing to be done */
 }
 
-void drv_push_button_start(const drv_hal_push_button_config_s push_button_config)
+void drv_push_button_start(const drv_hal_push_button_config_s *push_button_config)
 {
-	if(push_button_config.push_button_inst < DRV_PUSH_BUTTON_MAX)
+	if(push_button_config->push_button_inst < DRV_PUSH_BUTTON_MAX)
 	{
-		vdrv_push_button_type[push_button_config.push_button_inst].gpio_inst
-			= push_button_config.gpio_inst;
+		vdrv_push_button_type[push_button_config->push_button_inst].gpio_inst
+			= push_button_config->gpio_inst;
 
-		vdrv_push_button_type[push_button_config.push_button_inst].pin
-			= push_button_config.pin;
+		vdrv_push_button_type[push_button_config->push_button_inst].pin
+			= push_button_config->pin;
 	}
 }
 

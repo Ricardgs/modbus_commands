@@ -33,26 +33,26 @@ void hal_timer_init(void)
 	memset(vhal_timer_tick_freq_hz, 0, sizeof(vhal_timer_tick_freq_hz));
 }
 
-void hal_timer_start(hal_timer_config_s config)
+void hal_timer_start(const hal_timer_config_s *config)
 {
 	TIM_TypeDef *base;
 	uint32_t auto_reload;
 	uint32_t prescaler;
 
-	if(config.timer_inst < HAL_TIMER_TIMER_INST_MAX)
+	if(config->timer_inst < HAL_TIMER_TIMER_INST_MAX)
 	{
-		base = vhal_timer_base[config.timer_inst];
+		base = vhal_timer_base[config->timer_inst];
 
-		vhal_timer_tick_freq_hz[config.timer_inst] = config.tick_freq_hz;
+		vhal_timer_tick_freq_hz[config->timer_inst] = config->tick_freq_hz;
 
-		hal_timer_calc_prescaler_counts(config.clk_freq_hz,
-										config.tick_freq_hz,
-										config.timer_inst,
+		hal_timer_calc_prescaler_counts(config->clk_freq_hz,
+										config->tick_freq_hz,
+										config->timer_inst,
 										&prescaler,
 										&auto_reload);
 
 		/* Enable timer clock */
-		hal_timer_enable_clk(config.timer_inst);
+		hal_timer_enable_clk(config->timer_inst);
 
 		/* Configure prescaler register */
 		base->PSC = prescaler;
@@ -67,7 +67,7 @@ void hal_timer_start(hal_timer_config_s config)
 		base->CR1 |= TIM_CR1_CEN;
 
 		/* Enable interrupt in NVIC */
-		NVIC_EnableIRQ(chal_timer_interrupt_source[config.timer_inst]);
+		NVIC_EnableIRQ(chal_timer_interrupt_source[config->timer_inst]);
 	}
 }
 

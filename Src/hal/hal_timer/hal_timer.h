@@ -50,7 +50,7 @@ typedef struct
 } hal_timer_timer_s;
 
 void hal_timer_init(void);
-void hal_timer_start(hal_timer_config_s config);
+void hal_timer_start(const hal_timer_config_s *config);
 error_e hal_timer_attach(hal_timer_timer_inst_e timer_inst,
 					  	 hal_timer_timer_s *timer,
 						 uint32_t timeout_ms);

@@ -36,13 +36,13 @@ void drv_led_init(void)
 	}
 }
 
-void drv_led_start(const drv_led_congif_s led_config)
+void drv_led_start(const drv_led_congif_s *led_config)
 {
-	if(led_config.led_inst < DRV_LED_INST_MAX)
+	if(led_config->led_inst < DRV_LED_INST_MAX)
 	{
-		vdrv_led_type[led_config.led_inst].gpio_inst = led_config.gpio_inst;
-		vdrv_led_type[led_config.led_inst].pin = led_config.pin;
-		vdrv_led_timer_inst[led_config.led_inst] = led_config.timer_inst;
+		vdrv_led_type[led_config->led_inst].gpio_inst = led_config->gpio_inst;
+		vdrv_led_type[led_config->led_inst].pin = led_config->pin;
+		vdrv_led_timer_inst[led_config->led_inst] = led_config->timer_inst;
 	}
 }
 
